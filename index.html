@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="de" class="dark h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>MS. Osterwick III - Das Mysterium</title>
+    
+    <!-- External Dependencies -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        * {
+            touch-action: manipulation;
+        }
+        html, body {
+            height: 100%;
+            overscroll-behavior-y: none;
+        }
+        body {
+            font-family: 'Space Grotesk', sans-serif;
+            background-color: #070a0f;
+            color: #e2e8f0;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .font-mono-code {
+            font-family: 'Fira Code', monospace;
+        }
+        /* Mobile Input Zoom Prevention */
+        input[type="text"] {
+            font-size: 16px !important;
+        }
+        /* Custom UI Scrollbars */
+        ::-webkit-scrollbar {
+            width: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #090d16;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #223046;
+            border-radius: 2px;
+        }
+        /* Visual Glow Effects */
+        .glow-yellow {
+            box-shadow: 0 0 20px rgba(234, 179, 8, 0.22);
+        }
+        .glow-green {
+            box-shadow: 0 0 20px rgba(34, 197, 94, 0.22);
+        }
+        .glow-red {
+            box-shadow: 0 0 20px rgba(239, 68, 68, 0.22);
+        }
+        /* Touch feedback animation */
+        .touch-active:active {
+            transform: scale(0.97);
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 flex flex-col font-sans antialiased selection:bg-amber-500 selection:text-slate-950">
+    <!-- Root Container -->
+    <div id="root" class="flex-1 flex flex-col min-h-screen"></div>
+
+    <script type="text/babel">
+        class SoundEngine {
+            constructor() {
+                this.ctx = null;
+                this.isMuted = false;
+            }
+
+            init() {
+                if (!this.ctx) {
+                    const AudioContext = window.AudioContext || window.webkitAudioContext;
+                    if (AudioContext) {
+                        this.ctx = new AudioContext();
+                    }
+                }
+                if (this.ctx && this.ctx.state === 'suspended') {
+                    this.ctx.resume();
+                }
+            }
+
+            playBeep(freq = 600, duration = 0.08, type = 'sine') {
+                if (this.isMuted) return;
+                this.init();
+                if (!this.ctx) return;
+
+                try {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = type;
+                    osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+                    gain.gain.setValueAtTime(0.08, this.ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration);
+
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+
+                    osc.start();
+                    osc.stop(this.ctx.currentTime + duration);
+                } catch(e) {
+                    console.error("Audio error:", e);
+                }
+            }
+
+            playSuccess() {
+                if (this.isMuted) return;
+                this.init();
+                if (!this.ctx) return;
+
+                try {
+                    const notes = [440, 554.37, 659.25, 880];
+                    notes.forEach((freq, idx) => {
+                        setTimeout(() => {
+                            this.playBeep(freq, 0.12, 'triangle');
+                        }, idx * 80);
+                    });
+                } catch(e) {
+                    console.error("Audio error:", e);
+                }
+            }
+
+            playError() {
+                if (this.isMuted) return;
+                this.init();
+                if (!this.ctx) return;
+
+                try {
+                    this.playBeep(180, 0.18, 'sawtooth');
+                    setTimeout(() => this.playBeep(130, 0.22, 'sawtooth'), 100);
+                } catch(e) {
+                    console.error("Audio error:", e);
+                }
+            }
+        }
+
+        const audio = new SoundEngine();
+
+        const stationDatabase = {
+            1: {
+                id: 1,
+                title: "STATION 1",
+                subtitle: "Sektor Radbahn",
+                location: "Radbahn (Rosendahl / Coesfeld)",
+                validAnswers: ["x-pass", "xpass", "x pass", "pass-x", "pass x"],
+                hintSummary: "Am Rande der Radbahn entglitt Flake ein hochrangiges Dokument.",
+                clues: [
+                    { 
+                        id: "c1_1", 
+                        title: "Spurensicherung #01", 
+                        text: "Im nassen Laubhaufen neben dem asphaltierten Weg wurde eine rote Hülle gesichert." 
+                    },
+                    { 
+                        id: "c1_2", 
+                        title: "Laborbefund 409-HF", 
+                        text: "Ein kunststoffversiegeltes Ausweisdokument mit verwaschenen Autorisierungsstempeln der Sicherheitsstufe 1." 
+                    },
+                    { 
+                        id: "c1_3", 
+                        title: "Abgehörter Funkspruch", 
+                        text: "'Flake hat seinen Lichtbildausweis verloren! Ohne diese Autorisierung hat die Reinigungskraft keinen Zutritt mehr zum Kontrollstand!'" 
+                    }
+                ],
+                reflection: "GELÖST! Der Autorisierungsschein wurde verifiziert! Ohne diese Freigabe war Flakes Zugang gesperrt."
+            },
+            2: {
+                id: 2,
+                title: "STATION 2",
+                subtitle: "Sektor Fluss-Schleusenbereich",
+                location: "Dinkel-Schleuse (Rosendahl)",
+                validAnswers: ["maske-t", "masket", "maske t", "t-maske", "t maske"],
+                hintSummary: "Hinter dem Schleusenwerk ließ Flake sein Schutzgerät zurück.",
+                clues: [
+                    { 
+                        id: "c2_1", 
+                        title: "Spurensicherung #02", 
+                        text: "Ein robuster Atemschutz mit Doppel-Filterpatronen liegt im feuchten Gebüsch." 
+                    },
+                    { 
+                        id: "c2_2", 
+                        title: "Ausrüstungs-Inspektion", 
+                        text: "Vollgesichts-Schutzausrüstung gegen toxische Ausdünstungen der tiefen Schiffsbilge." 
+                    },
+                    { 
+                        id: "c2_3", 
+                        title: "Abgehörter Funkspruch", 
+                        text: "'Der Gehetzte lässt seinen Gesichts-Schutzfilter zurück. Er atmet nun ungeschützt den kalten Nebel ein!'" 
+                    }
+                ],
+                reflection: "KORREKT! Der Atemschutz wurde geborgen! Er bewahrte Flake vor den Ausdünstungen des Schiffsrumpfes."
+            },
+            3: {
+                id: 3,
+                title: "STATION 3",
+                subtitle: "Sektor Sedimentzone",
+                location: "Flussbett Dinkel (Richtung Billerbeck)",
+                validAnswers: ["stiefel-c", "stiefelc", "stiefel c", "c-stiefel", "c stiefel"],
+                hintSummary: "Im klebrigen Schlick stecken festgetretene Arbeitsstiefel.",
+                clues: [
+                    { 
+                        id: "c3_1", 
+                        title: "Spurensicherung #03", 
+                        text: "Ein Paar feuerfeste Schutzstiefel mit schweren Stahlkappen verankert tief im Morast." 
+                    },
+                    { 
+                        id: "c3_2", 
+                        title: "Ausrüstungsliste Bilge", 
+                        text: "Spezielles Schuhwerk für Arbeiten im tiefen Nass. Versiegelt gegen Säure und Schlamm." 
+                    },
+                    { 
+                        id: "c3_3", 
+                        title: "Abgehörter Funkspruch", 
+                        text: "'Er flieht barfuß weiter! Seine Fußbekleidung blieb im tiefen Sediment der Dinkel stecken!'" 
+                    }
+                ],
+                reflection: "ERFOLGREICH VERIFIZIERT! Die Stiefel wurden geborgen! Sämtliche Hinterlassenschaften von Hermann Flake sind gesichert."
+            }
+        };
+
+        const StoryGraphic = () => (
+            <svg viewBox="0 0 500 240" className="w-full h-auto rounded-xl border border-amber-500/30 bg-slate-900 shadow-md my-2">
+                <defs>
+                    <linearGradient id="skyGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#0a0f1d" />
+                        <stop offset="100%" stopColor="#1e293b" />
+                    </linearGradient>
+                    <linearGradient id="mudGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#2d1a0c" />
+                        <stop offset="100%" stopColor="#0f0703" />
+                    </linearGradient>
+                </defs>
+                <rect x="0" y="0" width="500" height="110" fill="url(#skyGrad)" />
+                <rect x="0" y="80" width="500" height="30" fill="#0284c7" opacity="0.6" />
+                <rect x="0" y="110" width="500" height="130" fill="url(#mudGrad)" />
+                
+                <line x1="0" y1="80" x2="500" y2="80" stroke="#38bdf8" strokeWidth="2" strokeDasharray="4 4" />
+                <text x="15" y="73" fill="#38bdf8" fontSize="11" fontFamily="monospace" fontWeight="bold">DINKEL-OBERFLÄCHE (HÜFTHOCH)</text>
+
+                {/* Yellow Rubber Boat */}
+                <path d="M 160 74 Q 250 62 340 74 Q 360 85 330 88 L 170 88 Q 140 85 160 74 Z" fill="#eab308" stroke="#ca8a04" strokeWidth="3" />
+                <text x="195" y="83" fill="#000" fontSize="10" fontWeight="bold" fontFamily="sans-serif">GUMMIBOOT</text>
+
+                {/* Impossible Draft */}
+                <path d="M 210 88 L 290 88 L 270 210 L 230 210 Z" fill="#b45309" opacity="0.85" stroke="#f59e0b" strokeWidth="2" strokeDasharray="3 3" />
+                
+                <line x1="375" y1="80" x2="375" y2="210" stroke="#ef4444" strokeWidth="2" />
+                <polygon points="375,80 370,90 380,90" fill="#ef4444" />
+                <polygon points="375,210 370,200 380,200" fill="#ef4444" />
+                <text x="385" y="150" fill="#ef4444" fontSize="12" fontWeight="bold" fontFamily="monospace">4M TIEFGANG</text>
+                
+                <text x="20" y="160" fill="#a16207" fontSize="11" fontFamily="monospace">SCHLICKSCHICHT ROSENDAHL</text>
+                <text x="20" y="180" fill="#eab308" fontSize="12" fontWeight="bold" fontFamily="monospace">ANOMALIE-SEDIMENT</text>
+            </svg>
+        );
+
+        const StationGraphic = ({ stationId }) => {
+            if (stationId === 1) {
+                return (
+                    <svg viewBox="0 0 400 160" className="w-full h-auto rounded-lg border border-amber-500/30 bg-slate-900 p-2 my-1">
+                        <rect x="110" y="15" width="180" height="130" rx="10" fill="#1e293b" stroke="#f59e0b" strokeWidth="2" />
+                        <rect x="125" y="30" width="150" height="28" rx="5" fill="#0f172a" />
+                        <text x="200" y="49" fill="#f59e0b" fontSize="13" fontWeight="bold" textAnchor="middle" fontFamily="monospace">SICHERHEITSDOKUMENT</text>
+                        <circle cx="155" cy="90" r="20" fill="#334155" stroke="#94a3b8" strokeWidth="2" />
+                        <path d="M 155 82 A 7 7 0 0 1 155 96 A 7 7 0 0 1 155 82 Z M 144 105 C 144 98 166 98 166 105 Z" fill="#94a3b8" />
+                        <line x1="188" y1="78" x2="260" y2="78" stroke="#f59e0b" strokeWidth="3" />
+                        <line x1="188" y1="92" x2="245" y2="92" stroke="#64748b" strokeWidth="2" />
+                        <line x1="188" y1="106" x2="255" y2="106" stroke="#64748b" strokeWidth="2" />
+                        <text x="200" y="136" fill="#ef4444" fontSize="11" fontWeight="bold" textAnchor="middle" fontFamily="monospace">VERLORENE AUTORISIERUNG</text>
+                    </svg>
+                );
+            }
+            if (stationId === 2) {
+                return (
+                    <svg viewBox="0 0 400 160" className="w-full h-auto rounded-lg border border-amber-500/30 bg-slate-900 p-2 my-1">
+                        <circle cx="200" cy="70" r="40" fill="#1e293b" stroke="#38bdf8" strokeWidth="3" />
+                        <ellipse cx="182" cy="60" rx="10" ry="14" fill="#0284c7" opacity="0.85" />
+                        <ellipse cx="218" cy="60" rx="10" ry="14" fill="#0284c7" opacity="0.85" />
+                        <circle cx="200" cy="92" r="15" fill="#334155" stroke="#64748b" strokeWidth="2" />
+                        <rect x="140" y="78" width="20" height="30" rx="4" fill="#0f172a" stroke="#38bdf8" strokeWidth="2" />
+                        <rect x="240" y="78" width="20" height="30" rx="4" fill="#0f172a" stroke="#38bdf8" strokeWidth="2" />
+                        <path d="M 160 92 L 185 92 M 240 92 L 215 92" stroke="#38bdf8" strokeWidth="3" />
+                        <text x="200" y="142" fill="#38bdf8" fontSize="11" fontWeight="bold" textAnchor="middle" fontFamily="monospace">ATEMSCHUTZGERÄT BILGE</text>
+                    </svg>
+                );
+            }
+            return (
+                <svg viewBox="0 0 400 160" className="w-full h-auto rounded-lg border border-amber-500/30 bg-slate-900 p-2 my-1">
+                    <rect x="0" y="120" width="400" height="40" fill="#291e14" />
+                    <line x1="0" y1="120" x2="400" y2="120" stroke="#78350f" strokeWidth="3" />
+                    <path d="M 145 130 L 145 60 L 172 60 L 177 98 L 198 108 L 198 130 Z" fill="#1e293b" stroke="#22c55e" strokeWidth="2" />
+                    <path d="M 212 130 L 212 55 L 239 55 L 244 93 L 265 103 L 265 130 Z" fill="#1e293b" stroke="#22c55e" strokeWidth="2" />
+                    <text x="200" y="38" fill="#22c55e" fontSize="11" fontWeight="bold" textAnchor="middle" fontFamily="monospace">ARBEITSSTIEFEL IM SEDIMENT</text>
+                </svg>
+            );
+        };
+
+        function App() {
+            const [currentView, setCurrentView] = React.useState('intro'); // 'intro', 'station1', 'station2', 'station3', 'finale'
+            const [solvedStations, setSolvedStations] = React.useState({ 1: false, 2: false, 3: false });
+            const [inputs, setInputs] = React.useState({ 1: '', 2: '', 3: '' });
+            const [errors, setErrors] = React.useState({ 1: '', 2: '', 3: '' });
+            const [unlockedClues, setUnlockedClues] = React.useState({ 1: [0], 2: [0], 3: [0] });
+            const [copiedCoords, setCopiedCoords] = React.useState(false);
+
+            // Audio & Mobile Navigation helper
+            const handleNav = (viewName) => {
+                audio.playBeep(700, 0.05);
+                if (window.navigator && window.navigator.vibrate) {
+                    window.navigator.vibrate(20);
+                }
+                setCurrentView(viewName);
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            };
+
+            const unlockNextClue = (stId) => {
+                audio.playBeep(850, 0.07);
+                if (window.navigator && window.navigator.vibrate) {
+                    window.navigator.vibrate(30);
+                }
+                setUnlockedClues(prev => {
+                    const currentClues = prev[stId];
+                    if (currentClues.length < stationDatabase[stId].clues.length) {
+                        return { ...prev, [stId]: [...currentClues, currentClues.length] };
+                    }
+                    return prev;
+                });
+            };
+
+            const handleAnswerSubmit = (stId, e) => {
+                e.preventDefault();
+                const rawInput = inputs[stId] || '';
+                const cleanInput = rawInput.trim().toLowerCase().replace(/\s+/g, ' ');
+                const validList = stationDatabase[stId].validAnswers;
+
+                if (validList.includes(cleanInput)) {
+                    audio.playSuccess();
+                    if (window.navigator && window.navigator.vibrate) {
+                        window.navigator.vibrate([40, 60, 40]);
+                    }
+                    setSolvedStations(prev => ({ ...prev, [stId]: true }));
+                    setErrors(prev => ({ ...prev, [stId]: '' }));
+                } else {
+                    audio.playError();
+                    if (window.navigator && window.navigator.vibrate) {
+                        window.navigator.vibrate([100, 50, 100]);
+                    }
+                    setErrors(prev => ({ 
+                        ...prev, 
+                        [stId]: 'FALSCHE ANTWORT! Lies die Hinweise noch einmal gründlich.' 
+                    }));
+                }
+            };
+
+            const copyCoordinates = () => {
+                const textToCopy = '52° 01\' 14.2" N 7° 12\' 58.6" E';
+                const el = document.createElement('textarea');
+                el.value = textToCopy;
+                document.body.appendChild(el);
+                el.select();
+                document.execCommand('copy');
+                document.body.removeChild(el);
+                
+                audio.playBeep(950, 0.09);
+                if (window.navigator && window.navigator.vibrate) {
+                    window.navigator.vibrate(50);
+                }
+                setCopiedCoords(true);
+                setTimeout(() => setCopiedCoords(false), 3000);
+            };
+
+            return (
+                <div className="flex-1 flex flex-col max-w-lg w-full mx-auto p-3 sm:p-4 pb-6">
+                    {/* Header */}
+                    <header className="border-b border-slate-800 pb-3 mb-3 flex justify-between items-center">
+                        <div>
+                            <div className="flex items-center gap-1.5">
+                                <span className="inline-block w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse"></span>
+                                <span className="text-[11px] font-mono-code text-amber-500 tracking-wider uppercase font-semibold">AKTE #409-HF</span>
+                            </div>
+                            <h1 className="text-lg sm:text-xl font-bold text-slate-100 tracking-tight">
+                                MS. - Osterwick III
+                            </h1>
+                        </div>
+                        <div className="text-[11px] font-mono-code bg-amber-500/10 border border-amber-500/30 text-amber-400 px-2.5 py-1.5 rounded-lg font-semibold">
+                            Mystery-Multi by 4Lanfis
+                        </div>
+                    </header>
+
+                    {/* Smartphone-Optimized Station Nav */}
+                    <nav className="grid grid-cols-4 gap-1.5 mb-4 font-mono-code text-xs">
+                        <button 
+                            onClick={() => handleNav('intro')}
+                            className={`py-2.5 px-1 text-center rounded-lg border transition-all touch-active ${
+                                currentView === 'intro' 
+                                    ? 'bg-amber-500/20 border-amber-500 text-amber-400 font-bold' 
+                                    : 'bg-slate-900 border-slate-800 text-slate-400'
+                            }`}
+                        >
+                            CHRONIK
+                        </button>
+                        {[1, 2, 3].map(id => {
+                            const isSolved = solvedStations[id];
+                            const isActive = currentView === `station${id}`;
+                            return (
+                                <button
+                                    key={id}
+                                    onClick={() => handleNav(`station${id}`)}
+                                    className={`py-2 px-1 text-center rounded-lg border flex flex-col items-center justify-center transition-all touch-active ${
+                                        isActive 
+                                            ? 'bg-amber-500/20 border-amber-500 text-amber-400 font-bold' 
+                                            : isSolved
+                                            ? 'bg-emerald-950/60 border-emerald-600/60 text-emerald-400'
+                                            : 'bg-slate-900 border-slate-800 text-slate-400'
+                                    }`}
+                                >
+                                    <span>ST. {id}</span>
+                                    <span className="text-[9px]">
+                                        {isSolved ? '✓ GELÖST' : 'OFFEN'}
+                                    </span>
+                                </button>
+                            );
+                        })}
+                    </nav>
+
+                    {/* MAIN VIEW SYSTEM */}
+                    <main className="flex-1 flex flex-col">
+                        
+                        {}
+                        {currentView === 'intro' && (
+                            <div className="flex-1 flex flex-col justify-between space-y-4">
+                                <div className="bg-slate-900/90 border border-amber-500/30 rounded-xl p-4 space-y-3 shadow-xl">
+                                    <div className="border-b border-slate-800 pb-2 flex justify-between items-center">
+                                        <span className="text-[11px] font-mono-code text-amber-400 font-semibold">AKTE ROSENDAHL • COESFELD • BILLERBECK</span>
+                                        <span className="text-[10px] font-mono-code bg-amber-500/10 text-amber-400 px-2 py-0.5 rounded border border-amber-500/20">GEHEIM</span>
+                                    </div>
+
+                                    <h2 className="text-base font-bold text-amber-300 leading-snug">
+                                        Die Fluss-Anomalie im Münsterland
+                                    </h2>
+
+                                    <div className="text-xs sm:text-sm text-slate-300 space-y-2.5 leading-relaxed">
+                                        <p>
+                                            Die Akte der <strong>MS. - Osterwick</strong> wird von Kapitel zu Kapitel fantastischer. Wer die Chronik dieser Fluss-Anomalie im Städtedreieck <strong>Osterwick (Rosendahl), Coesfeld und Billerbeck</strong> verfolgt, braucht starke Nerven.
+                                        </p>
+                                        <p>
+                                            Es begann mit der Erstsichtung 1978: Ein stählernes Binnenmotorschiff, konstruiert als seltener <strong>Zweimaster in der Dinkel</strong>, das im kalten Novembernebel spurlos verschwand. Jahrelang vermutete man das Wrack tief im Schlick begraben.
+                                        </p>
+                                        <p>
+                                            Doch dann tauchten Kraftfahrt-Bundesamt-Akten auf: Ein hochmotorisierter <strong>Dreimaster bei Lutum</strong> jagte mitten in der Nacht auf einem Hänger über die Landstraße, löste mit 83 km/h die Radarfalle aus und kassierte Punkte in Flensburg!
+                                        </p>
+                                        
+                                        <StoryGraphic />
+
+                                        <p>
+                                            Neueste Logbuchseiten enthüllen nun die nackte Wahrheit: Sämtliche Masten waren bloß eine Nebel-Fata-Morgana. In Wahrheit war die <strong>MS. - Osterwick</strong> ein schlichtes, <strong>knallgelbes Schlauchboot</strong> – ein Strandspielzeug aus Gummi mit einem unfassbaren <strong>Tiefgang von knapp vier Metern</strong>!
+                                        </p>
+                                        <p className="bg-amber-950/40 p-2.5 rounded-lg border-l-4 border-amber-500 text-amber-200 text-xs">
+                                            Während das Bötchen äußerlich auf der Dinkel dümpelte, fräste sich sein unmöglich tiefer Rumpf wie Bleiklotz mitten durch das Sediment.
+                                        </p>
+                                        <p>
+                                            In den vergilbten Akten stößt du auf die Reinigungskraft <strong>Hermann Flake</strong>. Als ihm der Irrsinn zu bunt wurde, ergriff er die Flucht quer durch das Gelände – und verlor in der Panik wichtige Teile seiner Ausrüstung.
+                                        </p>
+                                    </div>
+                                </div>
+
+                                {/* Smartphone Primary Button */}
+                                <button
+                                    onClick={() => handleNav('station1')}
+                                    className="w-full py-3.5 px-5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold text-base rounded-xl shadow-lg glow-yellow touch-active transition-all flex items-center justify-center gap-2 border border-amber-300/40 cursor-pointer"
+                                >
+                                    <span>RECHERCHE STARTEN (STATION 1)</span>
+                                    <span className="text-xl">➔</span>
+                                </button>
+                            </div>
+                        )}
+
+                        {}
+                        {['station1', 'station2', 'station3'].includes(currentView) && (() => {
+                            const stId = parseInt(currentView.replace('station', ''));
+                            const data = stationDatabase[stId];
+                            const isSolved = solvedStations[stId];
+                            const visibleClueIndexes = unlockedClues[stId] || [0];
+                            const totalClues = data.clues.length;
+
+                            return (
+                                <div className="flex-1 flex flex-col justify-between space-y-3">
+                                    <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-3.5 sm:p-4 space-y-3 shadow-xl">
+                                        
+                                        {/* Station Title Banner */}
+                                        <div className="flex justify-between items-center border-b border-slate-800 pb-2">
+                                            <div>
+                                                <span className="text-[10px] font-mono-code text-amber-500 uppercase tracking-wider">{data.subtitle}</span>
+                                                <h2 className="text-base font-bold text-slate-100">{data.title}</h2>
+                                            </div>
+                                            <span className={`text-[10px] font-mono-code px-2 py-0.5 rounded-full border ${
+                                                isSolved 
+                                                    ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40' 
+                                                    : 'bg-amber-500/20 text-amber-400 border-amber-500/40'
+                                            }`}>
+                                                {isSolved ? 'GELÖST' : 'SPURENSUCHE'}
+                                            </span>
+                                        </div>
+
+                                        {/* Neutral Graphic */}
+                                        <StationGraphic stationId={stId} />
+
+                                        {/* Central Question Prompt */}
+                                        <div className="bg-slate-950 p-3 rounded-xl border border-amber-500/30 text-center">
+                                            <span className="text-[10px] font-mono-code text-amber-400/80 uppercase block mb-0.5">ERMITTLUNGSFRAGE</span>
+                                            <h3 className="text-base font-bold text-amber-300">
+                                                "Was hat Hermann Flake hier verloren?"
+                                            </h3>
+                                            <p className="text-[11px] text-slate-400 mt-0.5">
+                                                Ort: <span className="text-slate-200 font-medium">{data.location}</span>
+                                            </p>
+                                        </div>
+
+                                        {/* Clues Section */}
+                                        <div className="space-y-2">
+                                            <div className="flex justify-between items-center">
+                                                <span className="text-[10px] font-mono-code text-slate-400 uppercase">AKTEN-HINWEISE ({visibleClueIndexes.length}/{totalClues})</span>
+                                                {visibleClueIndexes.length < totalClues && !isSolved && (
+                                                    <button
+                                                        onClick={() => unlockNextClue(stId)}
+                                                        className="text-[11px] font-mono-code bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 px-2.5 py-1 rounded-lg touch-active transition-all"
+                                                    >
+                                                        + HINWEIS FREISCHALTEN
+                                                    </button>
+                                                )}
+                                            </div>
+
+                                            {visibleClueIndexes.map(idx => {
+                                                const clue = data.clues[idx];
+                                                return (
+                                                    <div key={clue.id} className="bg-slate-950/80 p-2.5 rounded-lg border border-slate-800 text-xs space-y-0.5">
+                                                        <div className="text-[10px] font-mono-code text-amber-400/90 font-semibold">
+                                                            {clue.title}
+                                                        </div>
+                                                        <p className="text-slate-300 leading-snug">
+                                                            {clue.text}
+                                                        </p>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+
+                                        {/* Solve Form / Reflection */}
+                                        {isSolved ? (
+                                            <div className="bg-emerald-950/40 border border-emerald-500/40 p-3 rounded-xl space-y-1 glow-green">
+                                                <div className="flex items-center gap-1.5 text-emerald-400 font-bold font-mono-code text-xs">
+                                                    <span>✓</span> ERMITTLUNGSERFOLG
+                                                </div>
+                                                <p className="text-xs text-emerald-200 leading-relaxed">
+                                                    {data.reflection}
+                                                </p>
+                                            </div>
+                                        ) : (
+                                            <form onSubmit={(e) => handleAnswerSubmit(stId, e)} className="space-y-2 pt-1">
+                                                <div>
+                                                    <label className="block text-[10px] font-mono-code text-slate-400 mb-1">
+                                                        ANTWORT EINGEBEN:
+                                                    </label>
+                                                    <input
+                                                        type="text"
+                                                        value={inputs[stId] || ''}
+                                                        onChange={(e) => setInputs({ ...inputs, [stId]: e.target.value })}
+                                                        placeholder="Gesuchten Gegenstand eingeben..."
+                                                        className="w-full bg-slate-950 border border-slate-700 focus:border-amber-500 rounded-lg px-3 py-3 text-slate-100 font-mono-code text-base outline-none transition-all placeholder:text-slate-600"
+                                                    />
+                                                </div>
+
+                                                {errors[stId] && (
+                                                    <div className="p-2.5 bg-red-950/60 border border-red-500/40 text-red-300 text-xs rounded-lg font-mono-code">
+                                                        ⚠️ {errors[stId]}
+                                                    </div>
+                                                )}
+
+                                                <button
+                                                    type="submit"
+                                                    className="w-full py-3.5 px-4 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-lg shadow touch-active transition-all font-mono-code uppercase text-xs cursor-pointer"
+                                                >
+                                                    ANTWORT ÜBERPRÜFEN
+                                                </button>
+                                            </form>
+                                        )}
+                                    </div>
+
+                                    {/* Navigation Next/Prev */}
+                                    <div className="flex justify-between items-center gap-2">
+                                        <button
+                                            onClick={() => handleNav(stId === 1 ? 'intro' : `station${stId - 1}`)}
+                                            className="flex-1 py-3 px-2 bg-slate-900 border border-slate-800 text-slate-300 rounded-xl font-mono-code text-xs text-center touch-active transition-all"
+                                        >
+                                            ◄ ZURÜCK
+                                        </button>
+
+                                        {stId < 3 ? (
+                                            <button
+                                                onClick={() => handleNav(`station${stId + 1}`)}
+                                                className="flex-1 py-3 px-2 bg-amber-500/20 border border-amber-500/50 text-amber-300 rounded-xl font-mono-code text-xs font-bold text-center touch-active transition-all"
+                                            >
+                                                STATION {stId + 1} ➔
+                                            </button>
+                                        ) : (
+                                            <button
+                                                onClick={() => {
+                                                    if (solvedStations[1] && solvedStations[2] && solvedStations[3]) {
+                                                        handleNav('finale');
+                                                    } else {
+                                                        audio.playError();
+                                                        alert("Löse zuerst alle 3 Stationen!");
+                                                    }
+                                                }}
+                                                className={`flex-1 py-3 px-2 border rounded-xl font-mono-code text-xs font-bold text-center touch-active transition-all ${
+                                                    solvedStations[1] && solvedStations[2] && solvedStations[3]
+                                                        ? 'bg-emerald-500 text-slate-950 border-emerald-400 glow-green'
+                                                        : 'bg-slate-900 border-slate-800 text-slate-500'
+                                                }`}
+                                            >
+                                                GEOCACHE-ZIEL ➔
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                            );
+                        })()}
+
+                        {}
+                        {currentView === 'finale' && (
+                            <div className="flex-1 flex flex-col justify-between space-y-4">
+                                <div className="bg-slate-900/95 border border-emerald-500/40 rounded-xl p-4 space-y-4 shadow-2xl glow-green text-center">
+                                    <div className="inline-block px-3 py-0.5 bg-emerald-500/10 border border-emerald-500/30 rounded-full text-emerald-400 font-mono-code text-[11px] uppercase tracking-wider">
+                                        GEOCACHE-FINALE FREIGESCHALTET
+                                    </div>
+
+                                    <h2 className="text-xl font-bold text-slate-100">
+                                        Das Versteck von den 4Lanfis
+                                    </h2>
+
+                                    <p className="text-xs text-slate-300 leading-relaxed text-left">
+                                        Sämtliche Ausrüstungsgegenstände der Reinigungskraft <strong>Hermann Flake</strong> wurden geborgen! Seine Fluchtspur quer durch Rosendahl, Coesfeld und Billerbeck führt direkt zu den Ziel-Koordinaten des Geocaches.
+                                    </p>
+
+                                    {/* Final Radar Graphic */}
+                                    <div className="bg-slate-950 p-3 rounded-xl border border-emerald-500/30 flex flex-col items-center">
+                                        <svg viewBox="0 0 200 200" className="w-36 h-36 my-1">
+                                            <circle cx="100" cy="100" r="90" fill="none" stroke="#059669" strokeWidth="1" strokeDasharray="3 3" />
+                                            <circle cx="100" cy="100" r="60" fill="none" stroke="#059669" strokeWidth="1" />
+                                            <circle cx="100" cy="100" r="30" fill="none" stroke="#059669" strokeWidth="1" />
+                                            <line x1="100" y1="10" x2="100" y2="190" stroke="#059669" strokeWidth="1" />
+                                            <line x1="10" y1="100" x2="190" y2="100" stroke="#059669" strokeWidth="1" />
+                                            
+                                            {/* Target Marker */}
+                                            <circle cx="125" cy="75" r="8" fill="#ef4444" className="animate-ping" opacity="0.7" />
+                                            <circle cx="125" cy="75" r="6" fill="#ef4444" />
+                                            <line x1="125" y1="60" x2="125" y2="90" stroke="#fca5a5" strokeWidth="2" />
+                                            <line x1="110" y1="75" x2="140" y2="75" stroke="#fca5a5" strokeWidth="2" />
+                                        </svg>
+                                        <span className="text-[10px] font-mono-code text-slate-400 uppercase mt-1">GEOCACHE ANOMALIE LOKALISIERT</span>
+                                    </div>
+
+                                    {/* Smartphone Friendly Coordinates Box */}
+                                    <div className="bg-slate-950 p-3 rounded-xl border border-emerald-500/50 space-y-1">
+                                        <span className="text-[10px] font-mono-code text-emerald-400 uppercase tracking-wider block">FINAL KOORDINATEN</span>
+                                        <div className="text-lg sm:text-2xl font-bold font-mono-code text-amber-400 tracking-wider">
+                                            52° 01' 14.2" N  7° 12' 58.6" E
+                                        </div>
+                                    </div>
+
+                                    {/* Mobile Action Buttons */}
+                                    <div className="flex flex-col gap-2 pt-1">
+                                        <button
+                                            onClick={copyCoordinates}
+                                            className="w-full py-3.5 px-4 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-600 rounded-lg font-mono-code text-xs font-bold touch-active transition-all"
+                                        >
+                                            {copiedCoords ? '✓ KOORDINATEN KOPIERT!' : '📋 KOORDINATEN KOPIEREN'}
+                                        </button>
+                                        <a
+                                            href="https://www.google.com/maps/search/?api=1&query=52.020611,7.216278"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="w-full py-3.5 px-4 bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded-lg font-mono-code text-xs font-bold flex items-center justify-center gap-2 shadow touch-active transition-all"
+                                        >
+                                            <span>🗺️ IN MAPS ÖFFNEN</span>
+                                        </a>
+                                    </div>
+                                </div>
+
+                                <button
+                                    onClick={() => handleNav('intro')}
+                                    className="w-full py-3 bg-slate-900 border border-slate-800 text-slate-400 rounded-xl font-mono-code text-xs touch-active transition-all"
+                                >
+                                    ◄ ZURÜCK ZUR CHRONIK
+                                </button>
+                            </div>
+                        )}
+
+                    </main>
+
+                    {/* Footer */}
+                    <footer className="mt-4 pt-2 border-t border-slate-900 text-center font-mono-code text-[10px] text-slate-500">
+                        MS. - OSTERWICK III • MYSTERY-MULTI BY 4LANFIS<br />ROSENDAHL • COESFELD • BILLERBECK
+                    </footer>
+                </div>
+            );
+        }
+
+        const rootElement = document.getElementById('root');
+        const root = ReactDOM.createRoot(rootElement);
+        root.render(<App />);
+    </script>
+</body>
+</html>
