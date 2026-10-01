@@ -155,9 +155,10 @@
                 title: "STATION 1",
                 subtitle: "Sektor Radbahn",
                 location: "Radbahn (Rosendahl / Coesfeld)",
-                // Base64 encoded: "N 51° 59.254' E 007° 13.962'"
+
+        
                 coords: "TiA1McKwIDU5LjI1NCcgRSAwMDfCsCAxMy45NjIn", 
-                // Base64 encoded answers: "x-pass", "xpass", "x pass", "pass-x", "pass x", "uns kurz an!"
+           
                 validAnswers: ["eC1wYXNz", "eHBhc3M=", "eCBwYXNz", "cGFzcy14", "cGFzcyB4", "dW5zIGt1cnogYW4h"],
                 hintSummary: "Am Rande der Radbahn entglitt Flake ein hochrangiges Dokument.",
                 clues: [
@@ -184,9 +185,9 @@
                 title: "STATION 2",
                 subtitle: "Sektor Fluss-Schleusenbereich",
                 location: "Dinkel-Schleuse (Rosendahl)",
-                // Base64 encoded: "N 51° 59.321' E 007° 14.020'"
+              
                 coords: "TiA1McKwIDU5LjMyMScgRSAwMDfCsCAxNC4wMjAn",
-                // Base64 encoded answers: "maske-t", "masket", "maske t", "t-maske", "t maske", "uns kurz an!"
+   
                 validAnswers: ["bWFza2UtdA==", "bWFza2V0", "bWFza2UgdA==", "dC1tYXNrZQ==", "dCBtYXNrZQ==", "dW5zIGt1cnogYW4h"],
                 hintSummary: "Hinter dem Schleusenwerk ließ Flake sein Schutzgerät zurück.",
                 clues: [
@@ -213,9 +214,9 @@
                 title: "STATION 3",
                 subtitle: "Sektor Sedimentzone",
                 location: "Morastzone (Richtung Billerbeck)",
-                // Base64 encoded: "N 51° 59.413' E 007° 14.123'"
+        
                 coords: "TiA1McKwIDU5LjQxMycgRSAwMDfCsCAxNC4xMjMn",
-                // Base64 encoded answers: "stiefel-c", "stiefelc", "stiefel c", "c-stiefel", "c stiefel", "uns kurz an!"
+         
                 validAnswers: ["c3RpZWZlbC1j", "c3RpZWZlbGM=", "c3RpZWZlbCBj", "Yy1zdGllZmVs", "YyBzdGllZmVs", "dW5zIGt1cnogYW4h"],
                 hintSummary: "Im klebrigen Schlick stecken festgetretene Arbeitsstiefel.",
                 clues: [
@@ -466,7 +467,7 @@
             };
 
             const copyCoordinates = async () => {
-                // Finale Coords Obfuscated: "N 51° 59.804' E 007° 14.481'"
+    
                 const textToCopy = _d("TiA1McKwIDU5LjgwNCcgRSAwMDfCsCAxNC40ODEn"); 
                 await copyTextToClipboard(textToCopy);
                 
